@@ -59,14 +59,15 @@ int main(void)
                         pid = fork();
                         if (pid == 0){
                                 /* Child */
-                                int ret = execvp(args[0], args); //execvp since it searches the command utilizing $PATH
-                                fprintf(stdout,"%d\n", ret);
-                                perror("execvp");
-                                exit(40);              
+                                execvp(args[0], args); //execvp since it searches the command utilizing $PATH
+                                exit(1);              
                         } else if (pid > 0) {
                                 /* Parent */
                                 int status;
                                 waitpid(pid, &status, 0);
+                                if(WEXITSTATUS(status) == 1){
+                                        fprintf(stderr, "Error: command not found\n");
+                                }
                                 fprintf(stderr, "+ completed '%s' [%d]\n", cmd, WEXITSTATUS(status));
 
                         }
