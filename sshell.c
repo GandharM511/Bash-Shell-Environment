@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #define CMDLINE_MAX 512
 
@@ -11,7 +12,9 @@ int main(void)
 
         while (1) {
                 char *nl;
-                int retval;
+                pid_t pid;
+                char *args[] = { cmd, NULL};
+                
 
                 /* Print prompt */
                 printf("sshell@ucd$ ");
@@ -38,9 +41,21 @@ int main(void)
                 }
 
                 /* Regular command */
-                retval = system(cmd);
-                fprintf(stdout, "Return status value for '%s': %d\n",
-                        cmd, retval);
+                else{
+                        pid = fork();
+                        if (pid == 0){
+                                /* Child */
+                                execvp(cmd, args); //execvp since it searches the command utilizing $PATH
+                        } else if (pid > 0) {
+                                /* Parent */
+                                int status;
+                                waitpid(pid, &status, 0);
+                                fprintf(stderr, "+ completed '%s' [%d]\n", cmd, WEXITSTATUS(status));
+
+                        }
+                }
+
+               
         }
 
         return EXIT_SUCCESS;
