@@ -59,7 +59,10 @@ int main(void)
                         pid = fork();
                         if (pid == 0){
                                 /* Child */
-                                execvp(args[0], args); //execvp since it searches the command utilizing $PATH
+                                int ret = execvp(args[0], args); //execvp since it searches the command utilizing $PATH
+                                fprintf(stdout,"%d\n", ret);
+                                perror("execvp");
+                                exit(40);              
                         } else if (pid > 0) {
                                 /* Parent */
                                 int status;
