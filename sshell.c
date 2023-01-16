@@ -12,8 +12,12 @@ int main(void)
 
         while (1) {
                 char *nl;
+                char *copy;
+                char *token;
                 pid_t pid;
-                char *args[] = { cmd, NULL};
+                char *args[17];
+                const char delimiter[2]= " ";
+                int i;
                 
 
                 /* Print prompt */
@@ -40,12 +44,22 @@ int main(void)
                         break;
                 }
 
+
                 /* Regular command */
                 else{
+                        
+                        copy = strdup(cmd);
+                        token = strtok(copy, delimiter);
+                        for(i=0; token != NULL; i++){
+                                args[i] = token;
+                                token = strtok(NULL, delimiter);      
+                        }
+                        args[i] = NULL;
+
                         pid = fork();
                         if (pid == 0){
                                 /* Child */
-                                execvp(cmd, args); //execvp since it searches the command utilizing $PATH
+                                execvp(args[0], args); //execvp since it searches the command utilizing $PATH
                         } else if (pid > 0) {
                                 /* Parent */
                                 int status;
