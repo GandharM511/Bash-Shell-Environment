@@ -11,7 +11,7 @@ void singleCommands(char* cmd){
         char *token;
         char *args[17];
         pid_t pid;
-        const char delimiter[2]= " ";
+        const char delimiter[4]= " ><";
         int i;
 
         copy = strdup(cmd);
