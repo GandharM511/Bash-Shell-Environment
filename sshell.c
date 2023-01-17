@@ -108,14 +108,9 @@ void singleCommands(char* cmd, char*(*previousDir)[3]){
         }*/
 
         if(!strcmp(args[0], "cd")){
-                //fprintf(stdout, "%s\n %s\n",(*previousDir)[0], (*previousDir)[1]);
                 strcpy(*(previousDir[0]), *(previousDir[1]));
-                //fprintf(stdout, "%s\n %s\n",*(previousDir[0]), *(previousDir[1]));
-
                 getcwd(path, 512);
-
                 strcpy(*(previousDir[1]), path);
-                //fprintf(stdout, "%s\n %s\n",*(previousDir[0]), *(previousDir[1]));
                 if(!strcmp(args[1], ".")){
                         error_check = 0;
                 }
@@ -189,7 +184,6 @@ int main(void)
                 }
 
                 if (!strcmp(cmd, "pwd")) {
-                        
                         fprintf(stdout, "%s\n", getcwd(path, 512));
                 }
 
