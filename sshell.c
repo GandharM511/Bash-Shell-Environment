@@ -109,15 +109,25 @@ void singleCommands(char* cmd){
                 /* Child */
                 if(!strcmp(args[0], "cd")){
                         //fprintf(stdout, ")
-
-                        char dir[512];
-                        char dash = '/';
-                        getcwd(dir, 512);
-                        strncat(dir, &dash, 1);
-                        strncat(dir, args[1], strlen(args[1]));
-                        fprintf(stdout, "%s\n", dir);
-                        chdir(dir);
-                        exit(0);
+                        if(!strcmp(args[1], "..")){
+                                char dir[512];
+                                char dash = '/';
+                                getcwd(dir, 512);
+                                int length = strlen(dir)-1;
+                                while(dir[length] != dash){
+                                        dir[length] = '\0';
+                                        length--;
+                                }
+                                fprintf(stdout, "%s\n", dir);
+                                chdir("/mnt/c/Users/rediv");
+                                exit(0);    
+                        }
+                        //char dir[512];
+                        //getcwd(dir, 512);
+                        
+                        //fprintf(stdout, "%s\n", dir);
+                        //chdir(dir);
+                        //exit(0);
                 }
                 execvp(args[0], args); //execvp since it searches the command utilizing $PATH
                 exit(1);              
@@ -168,8 +178,8 @@ int main(void)
                 }
 
                 if (!strcmp(cmd, "pwd")) {
-                        char dir[512];
-                        fprintf(stdout, "%s\n", getcwd(dir, 512));
+                        char path[512];
+                        fprintf(stdout, "%s\n", getcwd(path, 512));
                 }
 
                 /* Regular command */
