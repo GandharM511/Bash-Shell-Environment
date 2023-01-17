@@ -104,31 +104,21 @@ void singleCommands(char* cmd){
                 return;
         }*/
 
+        if(!strcmp(args[0], "cd")){
+                //fprintf(stdout, ")
+                int error_check = chdir(args[1]);
+                if(error_check == -1){
+                        fprintf(stderr, "Error: cannot cd into directory\n");
+                        error_check = 1;
+                }
+                        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, error_check);
+                return;    
+        }
+        
+
         pid = fork();
         if (pid == 0){
-                /* Child */
-                if(!strcmp(args[0], "cd")){
-                        //fprintf(stdout, ")
-                        if(!strcmp(args[1], "..")){
-                                char dir[512];
-                                char dash = '/';
-                                getcwd(dir, 512);
-                                int length = strlen(dir)-1;
-                                while(dir[length] != dash){
-                                        dir[length] = '\0';
-                                        length--;
-                                }
-                                fprintf(stdout, "%s\n", dir);
-                                chdir("/mnt/c/Users/rediv");
-                                exit(0);    
-                        }
-                        //char dir[512];
-                        //getcwd(dir, 512);
-                        
-                        //fprintf(stdout, "%s\n", dir);
-                        //chdir(dir);
-                        //exit(0);
-                }
+                /* Child */                
                 execvp(args[0], args); //execvp since it searches the command utilizing $PATH
                 exit(1);              
         } else if (pid > 0) {
