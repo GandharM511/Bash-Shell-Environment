@@ -6,16 +6,75 @@
 
 #define CMDLINE_MAX 512
 
+/*struct command{
+        char instruction[32];
+        //char* flags[17];
+        char* arguments[17];
+};*/
+
+
+
+
+/*struct command parser(char* cmd){
+        struct command obj2;
+        int i;
+        //int j = 0;
+        int k = 0;
+        char *copy;
+        char *token;
+        const char delimiter[4]= " ><";
+
+
+        copy = strdup(cmd);
+        token = strtok(copy, delimiter);
+        for(i=0; token != NULL; i++){
+                if(i == 0){
+                        strcpy(obj2.instruction, token);
+                }
+                if(token[0] == '-'){
+                        strcpy(obj2.flags[j], token);
+                        j += 1;
+                }
+                else{
+                        strcpy(obj2.arguments[k], token);
+                        k += 1;
+                }
+                token = strtok(NULL, delimiter);      
+                if (i>15){
+                        fprintf(stderr,"Error: too many process arguments\n");
+                        struct command nullobj;
+                        strcpy(nullobj.instruction, "BREAK");
+                        return nullobj;
+                }
+        }
+        obj2.arguments[k] = NULL;
+        return obj2;
+}*/
+
+
 void singleCommands(char* cmd){
         char *copy;
         char *token;
         char *args[17];
         pid_t pid;
-        const char delimiter[4]= " ><";
         int i;
+        const char delimiter[2]= " ";
+        //char* dir;
+
 
         copy = strdup(cmd);
         token = strtok(copy, delimiter);
+        if(!strcmp(token, ">")){
+                fprintf(stderr,"Error: missing command\n");
+                return;
+        } else if(!strcmp(token, "<")){
+                fprintf(stderr,"Error: missing command\n");
+                return;
+        } else if(!strcmp(token, "|")){
+                fprintf(stderr,"Error: missing command\n");
+                return;
+        }
+
         for(i=0; token != NULL; i++){
                 args[i] = token;
                 token = strtok(NULL, delimiter);      
@@ -24,11 +83,42 @@ void singleCommands(char* cmd){
                         return;
                 }
         }
+
+        // ask if double pipes will be tested
+
+        if(!strcmp(args[i-1], ">")){
+                fprintf(stderr,"Error: no output file\n");
+                return;
+        } else if(!strcmp(args[i-1], "<")){
+                fprintf(stderr,"Error: missing command\n");
+                return;
+        } else if(!strcmp(args[i-1], "|")){
+                fprintf(stderr,"Error: missing command\n");
+                return;
+        }
         args[i] = NULL;
+        
+        /*struct command obj1;
+        obj1 = parser(cmd);
+        if(!strcmp(obj1.instruction, "BREAK")){
+                return;
+        }*/
 
         pid = fork();
         if (pid == 0){
                 /* Child */
+                if(!strcmp(args[0], "cd")){
+                        //fprintf(stdout, ")
+
+                        char dir[512];
+                        char dash = '/';
+                        getcwd(dir, 512);
+                        strncat(dir, &dash, 1);
+                        strncat(dir, args[1], strlen(args[1]));
+                        fprintf(stdout, "%s\n", dir);
+                        chdir(dir);
+                        exit(0);
+                }
                 execvp(args[0], args); //execvp since it searches the command utilizing $PATH
                 exit(1);              
         } else if (pid > 0) {
@@ -43,11 +133,6 @@ void singleCommands(char* cmd){
         }
 } 
 
-struct command{
-        char* instruction;
-        char* flags[17];
-        char* arguments[17];
-};
 
 
 
@@ -76,12 +161,16 @@ int main(void)
                 if (nl)
                         *nl = '\0';
 
-                /* Builtin command */
+                /* Builtin commands */
                 if (!strcmp(cmd, "exit")) {
                         fprintf(stderr, "Bye...\n");
                         break;
                 }
 
+                if (!strcmp(cmd, "pwd")) {
+                        char dir[512];
+                        fprintf(stdout, "%s\n", getcwd(dir, 512));
+                }
 
                 /* Regular command */
                 else{
