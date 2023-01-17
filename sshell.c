@@ -19,6 +19,10 @@ void singleCommands(char* cmd){
         for(i=0; token != NULL; i++){
                 args[i] = token;
                 token = strtok(NULL, delimiter);      
+                if (i>15){
+                        fprintf(stderr,"Error: too many process arguments\n");
+                        return;
+                }
         }
         args[i] = NULL;
 
@@ -39,15 +43,21 @@ void singleCommands(char* cmd){
         }
 } 
 
+struct command{
+        char* instruction;
+        char* flags[17];
+        char* arguments[17];
+};
+
+
+
 int main(void)
 {
         char cmd[CMDLINE_MAX];
 
         while (1) {
-                char *nl;
-                
-                
 
+                char *nl;
                 /* Print prompt */
                 printf("sshell@ucd$ ");
                 fflush(stdout);
