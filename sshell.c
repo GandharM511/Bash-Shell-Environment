@@ -52,13 +52,16 @@
 }*/
 
 
-void singleCommands(char* cmd){
+void singleCommands(char* cmd, char*(*previousDir)[3]){
         char *copy;
         char *token;
         char *args[17];
         pid_t pid;
         int i;
         const char delimiter[2]= " ";
+        
+        char path[512];
+        int error_check;
         //char* dir;
 
 
@@ -105,8 +108,23 @@ void singleCommands(char* cmd){
         }*/
 
         if(!strcmp(args[0], "cd")){
-                //fprintf(stdout, ")
-                int error_check = chdir(args[1]);
+                //fprintf(stdout, "%s\n %s\n",(*previousDir)[0], (*previousDir)[1]);
+                strcpy(*(previousDir[0]), *(previousDir[1]));
+                //fprintf(stdout, "%s\n %s\n",*(previousDir[0]), *(previousDir[1]));
+
+                getcwd(path, 512);
+
+                strcpy(*(previousDir[1]), path);
+                //fprintf(stdout, "%s\n %s\n",*(previousDir[0]), *(previousDir[1]));
+                if(!strcmp(args[1], ".")){
+                        error_check = 0;
+                }
+                else if(!strcmp(args[1], "-")){
+                      error_check = chdir((*previousDir)[0]);  
+                }
+                else{
+                       error_check = chdir(args[1]);
+                }
                 if(error_check == -1){
                         fprintf(stderr, "Error: cannot cd into directory\n");
                         error_check = 1;
@@ -139,9 +157,12 @@ void singleCommands(char* cmd){
 int main(void)
 {
         char cmd[CMDLINE_MAX];
+        char path[512];
+        getcwd(path, 512);
+        char* previousDir[3] = {path, path, NULL};
 
         while (1) {
-
+                
                 char *nl;
                 /* Print prompt */
                 printf("sshell@ucd$ ");
@@ -168,16 +189,18 @@ int main(void)
                 }
 
                 if (!strcmp(cmd, "pwd")) {
-                        char path[512];
+                        
                         fprintf(stdout, "%s\n", getcwd(path, 512));
                 }
 
+
+
                 /* Regular command */
                 else{
-                        singleCommands(cmd);
+                        singleCommands(cmd, &previousDir);
                 }
 
-               
+                
         }
 
         return EXIT_SUCCESS;
