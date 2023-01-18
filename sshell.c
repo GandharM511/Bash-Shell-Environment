@@ -52,7 +52,7 @@
 }*/
 
 
-void singleCommands(char* cmd, char*(*previousDir)[3]){
+void singleCommands(char* cmd){
         char *copy;
         char *token;
         char *args[17];
@@ -60,9 +60,7 @@ void singleCommands(char* cmd, char*(*previousDir)[3]){
         int i;
         const char delimiter[2]= " ";
         
-        char path[512];
         int error_check;
-        //char* dir;
 
 
         copy = strdup(cmd);
@@ -108,14 +106,8 @@ void singleCommands(char* cmd, char*(*previousDir)[3]){
         }*/
 
         if(!strcmp(args[0], "cd")){
-                strcpy(*(previousDir[0]), *(previousDir[1]));
-                getcwd(path, 512);
-                strcpy(*(previousDir[1]), path);
                 if(!strcmp(args[1], ".")){
                         error_check = 0;
-                }
-                else if(!strcmp(args[1], "-")){
-                      error_check = chdir((*previousDir)[0]);  
                 }
                 else{
                        error_check = chdir(args[1]);
@@ -153,8 +145,6 @@ int main(void)
 {
         char cmd[CMDLINE_MAX];
         char path[512];
-        getcwd(path, 512);
-        char* previousDir[3] = {path, path, NULL};
 
         while (1) {
                 
@@ -191,7 +181,7 @@ int main(void)
 
                 /* Regular command */
                 else{
-                        singleCommands(cmd, &previousDir);
+                        singleCommands(cmd);
                 }
 
                 
