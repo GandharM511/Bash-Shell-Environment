@@ -12,7 +12,7 @@ struct Command{
         int outputfd;
 }command;
 
-void parser(struct Command *command, char* cmd) {
+int parser(struct Command *command, char* cmd) {
         char *copy;
         char *token;
         int i;
@@ -23,7 +23,7 @@ void parser(struct Command *command, char* cmd) {
         
         if((!strcmp(token, ">")) || (!strcmp(token, "<")) || (!strcmp(token, "|"))){
                 fprintf(stderr,"Error: missing command\n");
-                return;
+                return 1;
         }
         strcpy(command->instruction, token);
         for(i=0; token != NULL; i++){
@@ -31,118 +31,41 @@ void parser(struct Command *command, char* cmd) {
                 token = strtok(NULL, delimiter);      
                 if (i>15){
                         fprintf(stderr,"Error: too many process arguments\n");
-                        return;
+                        return 1;
                 }
         }
         if(!strcmp((command->arguments)[i-1], ">")){
                 fprintf(stderr,"Error: no output file\n");
-                return;
+                return 1;
         } else if((!strcmp((command->arguments)[i-1], "<")) || (!strcmp((command->arguments)[i-1], "|"))){
                 fprintf(stderr,"Error: missing command\n");
-                return;
+                return 1;
         } 
         (command->arguments)[i] = NULL;
+
+        return 0;
         
 }
 
 
-
-/*struct command parser(char* cmd){
-        struct command obj2;
-        int i;
-        //int j = 0;
-        int k = 0;
-        char *copy;
-        char *token;
-        const char delimiter[4]= " ><";
-
-
-        copy = strdup(cmd);
-        token = strtok(copy, delimiter);
-        for(i=0; token != NULL; i++){
-                if(i == 0){
-                        strcpy(obj2.instruction, token);
-                }
-                if(token[0] == '-'){
-                        strcpy(obj2.flags[j], token);
-                        j += 1;
-                }
-                else{
-                        strcpy(obj2.arguments[k], token);
-                        k += 1;
-                }
-                token = strtok(NULL, delimiter);      
-                if (i>15){
-                        fprintf(stderr,"Error: too many process arguments\n");
-                        struct command nullobj;
-                        strcpy(nullobj.instruction, "BREAK");
-                        return nullobj;
-                }
-        }
-        obj2.arguments[k] = NULL;
-        return obj2;
-}*/
-
-
-
 void singleCommands(char* cmd){
         pid_t pid;
-        //int error_check;
-
-        /*char *copy;
-        char *token;
-        char *args[17];
+        int error_check;
+        int parsingerror;      
         
-        
-        const char delimiter[2]= " ";
-        
-        
+        struct Command obj;
+        parsingerror = parser(&obj,cmd);
+        if(parsingerror) return;
 
-
-        copy = strdup(cmd);
-        token = strtok(copy, delimiter);
-
-
-        if((!strcmp(token, ">")) || (!strcmp(token, "<")) || (!strcmp(token, "|"))){
-                fprintf(stderr,"Error: missing command\n");
-                return;
-        }
-
-        for(i=0; token != NULL; i++){
-                args[i] = token;
-                token = strtok(NULL, delimiter);      
-                if (i>15){
-                        fprintf(stderr,"Error: too many process arguments\n");
-                        return;
-                }
-        }
-
-        // ask if double pipes will be tested
-
-        if(!strcmp(args[i-1], ">")){
-                fprintf(stderr,"Error: no output file\n");
-                return;
-        } else if((!strcmp(args[i-1], "<")) || (!strcmp(args[i-1], "|"))){
-                fprintf(stderr,"Error: missing command\n");
-                return;
-        } 
-        args[i] = NULL;*/
-        
-        /*struct command obj1;
-        obj1 = parser(cmd);
-        if(!strcmp(obj1.instruction, "BREAK")){
-                return;
-        }
-
-        if(!strcmp(args[0], "cd")){
-                if(args[1]==NULL){
+        if(!strcmp(obj.instruction, "cd")){
+                if(obj.arguments[1]==NULL){
                         error_check = -1;
                 }
-                else if(!strcmp(args[1], ".")){
+                else if(!strcmp(obj.arguments[1], ".")){
                         error_check = 0;
                 }
                 else{
-                       error_check = chdir(args[1]);
+                       error_check = chdir(obj.arguments[1]);
                 }
                 if(error_check == -1){
                         fprintf(stderr, "Error: cannot cd into directory\n");
@@ -150,15 +73,11 @@ void singleCommands(char* cmd){
                 }
                 fprintf(stderr, "+ completed '%s' [%d]\n", cmd, error_check);
                 return;    
-        }*/
-        
-        struct Command obj;
-        parser(&obj,cmd);
+        }
 
         pid = fork();
         if (pid == 0){
-                /* Child */    
-                //PUT EXIT INTO CHILD            
+                /* Child */              
                 execvp(obj.instruction, obj.arguments); //execvp since it searches the command utilizing $PATH
                 exit(1);              
         } else if (pid > 0) {
