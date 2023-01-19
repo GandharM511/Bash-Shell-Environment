@@ -6,12 +6,32 @@
 
 #define CMDLINE_MAX 512
 
-/*struct command{
+struct Command{
         char instruction[32];
-        //char* flags[17];
         char* arguments[17];
-};*/
+        int outputfd;
+}command;
 
+parser(struct Command *command, char* cmd) {
+        char *copy;
+        char *token;
+        char *args[17];
+        pid_t pid;
+        int i;
+        const char delimiter[2]= " ";
+
+        copy = strdup(cmd);
+        token = strtok(copy, delimiter);
+        
+        for(i=0; token != NULL; i++){
+                args[i] = token;
+                token = strtok(NULL, delimiter);      
+                if (i>15){
+                        fprintf(stderr,"Error: too many process arguments\n");
+                        return;
+                }
+        }
+}
 
 
 
@@ -174,11 +194,13 @@ int main(void)
                 /* Builtin commands */
                 if (!strcmp(cmd, "exit")) {
                         fprintf(stderr, "Bye...\n");
+                        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, 0);
                         break;
                 }
 
                 if (!strcmp(cmd, "pwd")) {
                         fprintf(stdout, "%s\n", getcwd(path, 512));
+                        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, 0);
                 }
 
 
