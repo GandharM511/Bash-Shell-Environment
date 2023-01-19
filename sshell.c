@@ -106,7 +106,10 @@ void singleCommands(char* cmd){
         }*/
 
         if(!strcmp(args[0], "cd")){
-                if(!strcmp(args[1], ".")){
+                if(args[1]==NULL){
+                        error_check = -1;
+                }
+                else if(!strcmp(args[1], ".")){
                         error_check = 0;
                 }
                 else{
@@ -116,14 +119,15 @@ void singleCommands(char* cmd){
                         fprintf(stderr, "Error: cannot cd into directory\n");
                         error_check = 1;
                 }
-                        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, error_check);
+                fprintf(stderr, "+ completed '%s' [%d]\n", cmd, error_check);
                 return;    
         }
         
 
         pid = fork();
         if (pid == 0){
-                /* Child */                
+                /* Child */    
+                //PUT EXIT INTO CHILD            
                 execvp(args[0], args); //execvp since it searches the command utilizing $PATH
                 exit(1);              
         } else if (pid > 0) {
