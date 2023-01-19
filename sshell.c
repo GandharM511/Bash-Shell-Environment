@@ -49,6 +49,12 @@ int parser(struct Command *command, char* cmd) {
 
 
 void singleCommands(char* cmd){
+
+        if(!strcmp("\0", cmd)){
+                return;
+        }
+        
+
         pid_t pid;
         int error_check;
         int parsingerror;      
