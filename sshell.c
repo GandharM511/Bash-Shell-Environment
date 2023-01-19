@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define CMDLINE_MAX 512
 
@@ -13,14 +14,29 @@ struct Command{
 }command;
 
 int parser(struct Command *command, char* cmd) {
+
         char *copy;
+        char *lhscmd;
         char *token;
+        char *filename;
         int i;
         const char delimiter[2]= " ";
 
         copy = strdup(cmd);
-        token = strtok(copy, delimiter);
-        
+
+         
+
+        char* orindex = strchr(copy, '>');
+        if(orindex){
+                lhscmd = strtok(copy,">");
+                filename = strtok(NULL, delimiter);
+                command->outputfd = open(filename,O_WRONLY|O_CREAT,0644);
+
+        }
+        else{
+                lhscmd = strdup(cmd);
+        }
+        token = strtok(lhscmd, delimiter);
         if((!strcmp(token, ">")) || (!strcmp(token, "<")) || (!strcmp(token, "|"))){
                 fprintf(stderr,"Error: missing command\n");
                 return 1;
@@ -48,18 +64,18 @@ int parser(struct Command *command, char* cmd) {
 }
 
 
-void singleCommands(char* cmd){
+void execute(char* cmd){
 
         if(!strcmp("\0", cmd)){
                 return;
-        }
-        
+        } 
 
         pid_t pid;
         int error_check;
         int parsingerror;      
         
         struct Command obj;
+        obj.outputfd = 1;
         parsingerror = parser(&obj,cmd);
         if(parsingerror) return;
 
@@ -83,14 +99,17 @@ void singleCommands(char* cmd){
 
         pid = fork();
         if (pid == 0){
-                /* Child */              
+                /* Child */  
+                if(obj.outputfd != 1) {
+                        dup2(obj.outputfd, STDOUT_FILENO);   
+                }        
                 execvp(obj.instruction, obj.arguments); //execvp since it searches the command utilizing $PATH
                 exit(1);              
         } else if (pid > 0) {
                 /* Parent */
                 int status;
                 waitpid(pid, &status, 0);
-                if(WEXITSTATUS(status) == 1){
+                if(WEXITSTATUS(status) == 1 && strcmp(obj.instruction, "cat")){
                         fprintf(stderr, "Error: command not found\n");
                 }
                 fprintf(stderr, "+ completed '%s' [%d]\n", cmd, WEXITSTATUS(status));
@@ -99,10 +118,8 @@ void singleCommands(char* cmd){
 } 
 
 
+int main(void){
 
-
-int main(void)
-{
         char cmd[CMDLINE_MAX];
         char path[512];
 
@@ -139,11 +156,9 @@ int main(void)
                         fprintf(stderr, "+ completed '%s' [%d]\n", cmd, 0);
                 }
 
-
-
                 /* Regular command */
                 else{
-                        singleCommands(cmd);
+                        execute(cmd);
                 }
 
                 
