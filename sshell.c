@@ -52,6 +52,7 @@
 }*/
 
 
+
 void singleCommands(char* cmd){
         char *copy;
         char *token;
@@ -65,13 +66,9 @@ void singleCommands(char* cmd){
 
         copy = strdup(cmd);
         token = strtok(copy, delimiter);
-        if(!strcmp(token, ">")){
-                fprintf(stderr,"Error: missing command\n");
-                return;
-        } else if(!strcmp(token, "<")){
-                fprintf(stderr,"Error: missing command\n");
-                return;
-        } else if(!strcmp(token, "|")){
+
+
+        if((!strcmp(token, ">")) || (!strcmp(token, "<")) || (!strcmp(token, "|"))){
                 fprintf(stderr,"Error: missing command\n");
                 return;
         }
@@ -90,13 +87,10 @@ void singleCommands(char* cmd){
         if(!strcmp(args[i-1], ">")){
                 fprintf(stderr,"Error: no output file\n");
                 return;
-        } else if(!strcmp(args[i-1], "<")){
+        } else if((!strcmp(args[i-1], "<")) || (!strcmp(args[i-1], "|"))){
                 fprintf(stderr,"Error: missing command\n");
                 return;
-        } else if(!strcmp(args[i-1], "|")){
-                fprintf(stderr,"Error: missing command\n");
-                return;
-        }
+        } 
         args[i] = NULL;
         
         /*struct command obj1;
