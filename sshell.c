@@ -56,7 +56,14 @@ int parser(Command *command, char* cmd, int index, char* copy) {
         strcpy(copy,cmd);
 
         char* orindex = strchr(copy, '>');
-        if(orindex){
+        char* orindex2 = strrchr(copy, '>');
+        if((orindex && orindex2)&&(orindex2 == orindex+1)){
+                strcpy(copy,strtok(cmd,">>"));
+                strcpy(copy,strtok(NULL,">>"));
+                filename = strtok(copy, delimiter);
+                (*(command+index)).outputfd = open(filename,O_WRONLY|O_APPEND|O_CREAT,0644);
+        }
+        else if(orindex){
                 strcpy(cmd,strtok(copy,">"));
                 filename = strtok(NULL, delimiter);
                 (*(command+index)).outputfd = open(filename,O_WRONLY|O_CREAT,0644);
@@ -191,7 +198,7 @@ void execute(char* cmd, char* copy){
                         }   
                         
                         execvp(commands[i].instruction, commands[i].arguments); //execvp since it searches the command utilizing $PATH
-                        fprintf(stderr, "wrong\n");
+                        //fprintf(stderr, "wrong\n");
                         exit(1);           
                 } 
                 
