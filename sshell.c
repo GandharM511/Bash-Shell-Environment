@@ -97,27 +97,26 @@ void execute(char* cmd, char* copy){
                 return;
         } 
 
-        int fd[2];
-        pid_t pid2;
-        pid_t pid;
+        
+       
         
 
-        int parsingerror2;
-
-        Job *job;
-        job = malloc(sizeof(Job));
-
         
+        Job job;
 
-        int commandNumber = pipeParser(cmd,job);
+        int commandNumber = pipeParser(cmd,&job);
+
+        int fd[commandNumber-1][2]; // commandNumber -1 because if we have 2 commands, we would have 1 pipe etc
+        pid_t pid[commandNumber];
+        int parsingerror;
 
         Command *commands;
         commands = malloc(sizeof(Command) * commandNumber);
         
         for(int i = 0; i < commandNumber; i++){
                 commands[i].outputfd = 1;
-                parsingerror2 = parser(commands,job->cmds[i], i, copy);
-                if(parsingerror2) return;
+                parsingerror = parser(commands,job.cmds[i], i, copy);
+                if(parsingerror) return;
         }
 
         
@@ -144,11 +143,68 @@ void execute(char* cmd, char* copy){
                 return;    
         }
 
-        pipe(fd);
-        pid = fork();
+        int j;
+        for(j = 0; j < commandNumber-1; j++){
+        pipe(fd[j]);
+        }
 
 
+        for (int i = 0; i < commandNumber; i++){ 
+                pid[i] = fork();
+                if (pid[i] == 0){
+                        if(commandNumber == 1 && commands[i].outputfd != 1){
+                                dup2(commands[i].outputfd, STDOUT_FILENO);   
+                                
+                        }
+                        else if(i == 0){
+                                dup2(fd[i][1], STDOUT_FILENO);
+                                close(fd[i][0]);
+                                close(fd[i][1]);
+                                
+                                
+                        }
+                        else if(i == commandNumber-1){
+                                dup2(fd[i-1][0], STDIN_FILENO);
+                                fprintf(stderr, "%d input: %d\n",i-1, fd[i-1][0]);
+                                fprintf(stderr, "===========\n");
+                                close(fd[i-1][0]);
+                                close(fd[i-1][1]);
+                                if(commands[i].outputfd != 1) {
+                                        dup2(commands[i].outputfd, STDOUT_FILENO);   
+                                }
+                               
+
+
+                        }
+                        else{
+                                dup2(fd[i-1][0], STDIN_FILENO);
+                                dup2(fd[i][1], STDOUT_FILENO);
+                                fprintf(stderr, "%d input: %d\n",i, fd[i-1][0]);
+                                fprintf(stderr, "%d output: %d\n",i, fd[i][1]);
+                                fprintf(stderr, "===========\n");
+
+                                close(fd[i-1][0]);
+                                close(fd[i-1][1]);
+                                close(fd[i][0]);
+                                close(fd[i][1]);
+                                
+                        }   
+                        
+                        execvp(commands[i].instruction, commands[i].arguments); //execvp since it searches the command utilizing $PATH
+                        fprintf(stderr, "wrong\n");
+                        exit(1);           
+                } 
+                
+                
+        }
+
+       
         
+        
+        
+
+        /*pipe(fd[i]);
+        pid[i] = fork();
         if (pid == 0){
                 if(commandNumber > 1){
                         close(fd[0]);
@@ -177,21 +233,30 @@ void execute(char* cmd, char* copy){
                                 exit(20);
                         }
                 }
-        }
-        int status;
-        close(fd[1]);
-        close(fd[2]);
-
+        }*/
         
+        int status;
+        for(int i = 0; i < commandNumber-1; i++){
+        close(fd[i][1]);
+        close(fd[i][0]);
+        }
 
+        for (int i = 0; i < commandNumber; i++){
+                //waitpid(pid[i], &status, 0);
+                
+                //wait(NULL);
+                wait(NULL);
 
-        waitpid(pid, &status, 0);
-        waitpid(pid2, &status, 0);
+                
 
+        }
+        
         if(WEXITSTATUS(status) == 1 && strcmp(commands[0].instruction, "cat")){
                 fprintf(stderr, "Error: command not found\n");
         }
         fprintf(stderr, "+ completed '%s' [%d]\n", cmd, WEXITSTATUS(status));
+
+        free(commands);
  
 }
 
