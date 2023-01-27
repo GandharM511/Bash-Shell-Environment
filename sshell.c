@@ -103,14 +103,8 @@ void execute(char* cmd, char* copy){
         if(!strcmp("\0", cmd)){
                 return;
         } 
-
-        
-       
-        
-
-        
+     
         Job job;
-
         int commandNumber = pipeParser(cmd,&job);
 
         int fd[commandNumber-1][2]; // commandNumber -1 because if we have 2 commands, we would have 1 pipe etc
@@ -125,11 +119,6 @@ void execute(char* cmd, char* copy){
                 parsingerror = parser(commands,job.cmds[i], i, copy);
                 if(parsingerror) return;
         }
-
-        
-        
-        
-
 
         if(!strcmp(commands[0].instruction, "cd")){
                 int error_check;
@@ -155,7 +144,7 @@ void execute(char* cmd, char* copy){
         pipe(fd[j]);
         }
 
-
+        //char reading[CMDLINE_MAX];
         for (int i = 0; i < commandNumber; i++){ 
                 pid[i] = fork();
                 if (pid[i] == 0){
@@ -165,17 +154,24 @@ void execute(char* cmd, char* copy){
                         }
                         else if(i == 0){
                                 dup2(fd[i][1], STDOUT_FILENO);
-                                close(fd[i][0]);
-                                close(fd[i][1]);
+                                for (int j = 0; j < commandNumber-1; j++){
+                                        close(fd[j][0]);
+                                        close(fd[j][1]);
+                                }
+
+                                
+
                                 
                                 
                         }
                         else if(i == commandNumber-1){
                                 dup2(fd[i-1][0], STDIN_FILENO);
-                                fprintf(stderr, "%d input: %d\n",i-1, fd[i-1][0]);
-                                fprintf(stderr, "===========\n");
-                                close(fd[i-1][0]);
-                                close(fd[i-1][1]);
+                                //fgets(reading, CMDLINE_MAX, stdin);
+                                //fprintf(stderr, "proccess3: %s", reading);
+                                for (int j = 0; j < commandNumber-1; j++){
+                                        close(fd[j][0]);
+                                        close(fd[j][1]);
+                                }
                                 if(commands[i].outputfd != 1) {
                                         dup2(commands[i].outputfd, STDOUT_FILENO);   
                                 }
@@ -186,18 +182,17 @@ void execute(char* cmd, char* copy){
                         else{
                                 dup2(fd[i-1][0], STDIN_FILENO);
                                 dup2(fd[i][1], STDOUT_FILENO);
-                                fprintf(stderr, "%d input: %d\n",i, fd[i-1][0]);
-                                fprintf(stderr, "%d output: %d\n",i, fd[i][1]);
-                                fprintf(stderr, "===========\n");
-
-                                close(fd[i-1][0]);
-                                close(fd[i-1][1]);
-                                close(fd[i][0]);
-                                close(fd[i][1]);
+                                //fgets(reading, CMDLINE_MAX, stdin);
+                                //fprintf(stdout, "proccess2");
+                                for (int j = 0; j < commandNumber-1; j++){
+                                        close(fd[j][0]);
+                                        close(fd[j][1]);
+                                }
                                 
                         }   
-                        
+                        //fprintf(stderr, "child %d\n", i+1);
                         execvp(commands[i].instruction, commands[i].arguments); //execvp since it searches the command utilizing $PATH
+
                         //fprintf(stderr, "wrong\n");
                         exit(1);           
                 } 
@@ -210,8 +205,8 @@ void execute(char* cmd, char* copy){
         
         
 
-        /*pipe(fd[i]);
-        pid[i] = fork();
+        /*pipe(fd[0]);
+        pid[0] = fork();
         if (pid == 0){
                 if(commandNumber > 1){
                         close(fd[0]);
@@ -226,7 +221,21 @@ void execute(char* cmd, char* copy){
                 exit(1);           
         } else if (pid > 0 ) {
                 if(commandNumber > 1){
-                        pid2 = fork();
+                        pid[] = fork();
+                        if(pid2 == 0) {
+                                close(fd[1]);
+                                dup2(fd[0], STDIN_FILENO);
+                                close(fd[0]);
+                                
+                                if(commands[1].outputfd != 1) {
+                                        dup2(commands[1].outputfd, STDOUT_FILENO);   
+                                } 
+                                execvp(commands[1].instruction, commands[1].arguments);
+                                fprintf(stderr, "hello2\n");
+                                exit(20);
+                        }
+                        if(commandNumber > 2){
+                        pid = fork();
                         if(pid2 == 0) {
                                 close(fd[1]);
                                 dup2(fd[0], STDIN_FILENO);
@@ -240,6 +249,7 @@ void execute(char* cmd, char* copy){
                                 exit(20);
                         }
                 }
+                }
         }*/
         
         int status;
@@ -249,13 +259,9 @@ void execute(char* cmd, char* copy){
         }
 
         for (int i = 0; i < commandNumber; i++){
-                //waitpid(pid[i], &status, 0);
-                
-                //wait(NULL);
-                wait(NULL);
-
-                
-
+                //fprintf(stderr, "waiting for child %d to return\n", i+1);
+                waitpid(0, &status, 0);
+                //fprintf(stderr, "child %d returned\n", i+1);
         }
         
         if(WEXITSTATUS(status) == 1 && strcmp(commands[0].instruction, "cat")){
@@ -272,8 +278,13 @@ int main(void){
         char cmd[CMDLINE_MAX];
         char copy[CMDLINE_MAX];
         char path[CMDLINE_MAX];
+        int backgroundJobs = 0;
+        int pid = 1;
+        int status;
+
 
         while (1) {
+                
                 
                 char *nl;
                 /* Print prompt */
@@ -293,9 +304,16 @@ int main(void){
                 nl = strchr(cmd, '\n');
                 if (nl)
                         *nl = '\0';
+                waitpid(pid, &status, WNOHANG); 
 
                 /* Builtin commands */
                 if (!strcmp(cmd, "exit")) {
+                        if(backgroundJobs){
+                                fprintf(stderr, "Error: active jobs still running\n");
+                                fprintf(stderr, "+ completed '%s' [%d]\n", cmd, 1);
+                                continue;
+                        }
+
                         fprintf(stderr, "Bye...\n");
                         fprintf(stderr, "+ completed '%s' [%d]\n", cmd, 0);
                         break;
@@ -308,8 +326,18 @@ int main(void){
 
                 /* Regular command */
                 else{
-                        
+                        if(*(nl-1) == '&'){
+                                *(nl-1) = '\0';
+                                backgroundJobs++;
+                                pid = fork();
+                                if(pid == 0){
+                                        
+                                        execute(cmd, copy);
+                                        return EXIT_SUCCESS;
+                                }
+                        }else{
                         execute(cmd, copy);
+                        }
                 }
 
                 
