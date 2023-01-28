@@ -16,7 +16,7 @@ the user
 
 ## Parsing 
 After the command line input is fetched, `sshell` parses the input for
-pipes using strtok() to differentiate multiple commands, then parses for the
+pipes using `strtok()` to differentiate multiple commands, then parses for the
 output redirection metacharacter `>`, and finally parses through each command to
 differentiate instructions and arguments. Lastly `sshell` builds a data
 structure for commands, called `struct Command`,  and populates each object with
