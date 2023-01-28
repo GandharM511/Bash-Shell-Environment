@@ -294,7 +294,7 @@ int main(void){
         //int pid = 1;
         //int status;
         Job job;
-        job.pid[0]=0;
+        job.pid[0]=1;
         job.background = FALSE;
         job.done = TRUE;
 
