@@ -44,7 +44,7 @@ When the user calls `exit` to the command line, `sshell` terminates itself. It
 does this by breaking from the loop that `sshell` is running on, and printing
 out an exit status to show a successful termination. However, when there are
 background jobs running, `sshell` will check for their existence utilizing
-waitpid() with the WNOHANG flag. and stop the user from exiting the shell. Once
+`waitpid()` with the WNOHANG flag. and stop the user from exiting the shell. Once
 the background job has finished running, and if the user calls `exit` again,
 `sshell` will ensure that the background jobs are done, and then send out the
 completion message for the background job, and finally terminating itself after
@@ -59,8 +59,8 @@ received.
 If the shell has received a regular,
 non-pipelined, non-background, and non-output redirected input, it will fork the
 parent process onto a child process that will execute the command along with its
-flags through the execvp() system call. The parent process will then wait for
-the child to complete execution through the waitpid() function, and capture its
+flags through the `execvp()` system call. The parent process will then wait for
+the child to complete execution through the `waitpid()` function, and capture its
 exit status. Once this is done, the parent will check for any finished previous
 background jobs, which have their information stored in a separate struct data
 structure named `struct Job`, and if these have terminated, which has been
