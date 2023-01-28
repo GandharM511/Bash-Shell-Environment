@@ -8,13 +8,20 @@
 #define CMDLINE_MAX 512
 #define TOKLEN_MAX 32
 #define ARGS_MAX 16
+#define TRUE 1
+#define FALSE 0
 
 typedef struct{
         char* cmds[CMDLINE_MAX];
+        int background;
+        pid_t pid[4];
+        int commandNum;
+        pid_t pidret[4];
+        char fullcommand[CMDLINE_MAX];
+        int backgrounddone;
 }Job;
 
 typedef struct{
-        char* fullcommand;
         char instruction[TOKLEN_MAX];
         char* arguments[ARGS_MAX];
         int outputfd;
@@ -116,14 +123,46 @@ int parser(Command *command, char* cmd, int index, char* copy) {
 }
 
 
-void execute(char* cmd, char* copy){
+void execute(char* cmd, char* copy, Job *job){
 
         if(!strcmp("\0", cmd)){
+                int backstatus[job->commandNum];
+                if ((job->pid)[0]!=1){
+                        for (int i = 0; i < job->commandNum; i++){
+                                (job->pidret)[i] = waitpid((job->pid)[i],&(backstatus[i]), WNOHANG);
+                                if(!(job->pidret)[i]){
+                                        fprintf(stderr, "Error: active jobs still running\n");
+                                        fprintf(stderr, "+ completed 'exit' [%d]\n", 1);
+                                        break;
+                                }
+                                else if(i == (job->commandNum)-1){
+                                                completedFunction(job->fullcommand, backstatus, job->commandNum);
+                                                job->pid[0] = 1;
+                                                fprintf(stderr, "Bye...\n");
+                                                fprintf(stderr, "+ completed 'exit' [%d]\n", 0);
+                                }
+                        }
+                        
+                }
                 return;
         } 
-     
-        Job job;
-        int commandNumber = pipeParser(cmd,&job);
+        
+        int backstatus[job->commandNum];
+        if ((job->pid)[0]!=1){
+                for (int i = 0; i < job->commandNum; i++){
+                       (job->pidret)[i] = waitpid((job->pid)[i],&(backstatus[i]), WNOHANG);
+                       if(!(job->pidret)[i]){
+                                break;
+                       }
+                       else if(i == (job->commandNum)-1){
+                                job->backgrounddone = TRUE;
+                                job->pid[0] = 1;
+                       }
+                }
+
+        }
+        
+        int commandNumber = pipeParser(cmd,job);
 
         int fd[commandNumber-1][2]; // commandNumber -1 because if we have 2 commands, we would have 1 pipe etc
         pid_t pid[commandNumber];
@@ -134,7 +173,7 @@ void execute(char* cmd, char* copy){
         
         for(int i = 0; i < commandNumber; i++){
                 commands[i].outputfd = 1;
-                parsingerror = parser(commands,job.cmds[i], i, copy);
+                parsingerror = parser(commands,(job->cmds)[i], i, copy);
                 if(parsingerror) return;
         }
 
@@ -204,23 +243,36 @@ void execute(char* cmd, char* copy){
         }
 
        
-        
         int status[commandNumber];
         for(int i = 0; i < commandNumber-1; i++){
-        close(fd[i][1]);
-        close(fd[i][0]);
+                close(fd[i][1]);
+                close(fd[i][0]);
         }
+        
+        if(!(job->background)){
 
-        for (int i = 0; i < commandNumber; i++){
-                waitpid(0, &(status[i]), 0);
-        }
-        for (int i = 0; i < commandNumber; i++){
-                if(WEXITSTATUS(status[i]) == 1 && strcmp(commands[i].instruction, "cat")){
-                        fprintf(stderr, "Error: command not found\n");
+                for (int i = 0; i < commandNumber; i++){
+                        waitpid(0, &(status[i]), 0);
                 }
+                for (int i = 0; i < commandNumber; i++){
+                        if(WEXITSTATUS(status[i]) == 1 && strcmp(commands[i].instruction, "cat")){
+                                fprintf(stderr, "Error: command not found\n");
+                        }
+                }
+                if (job->backgrounddone){
+                        completedFunction(job->fullcommand, backstatus, job->commandNum);
+                }
+                completedFunction(cmd, status, commandNumber);
         }
-        completedFunction(cmd, status, commandNumber);
-
+        else if(job->background){
+                fprintf(stderr,"I am a background job\n");
+                for(int i = 0; i < commandNumber; i++){
+                        (job->pid)[i] = pid[i];
+                        fprintf(stderr,"I didnt seg fault stay mad\n");
+                }
+                job->commandNum = commandNumber;
+                
+        }
         free(commands);
  
 }
@@ -230,10 +282,12 @@ int main(void){
         char cmd[CMDLINE_MAX];
         char copy[CMDLINE_MAX];
         char path[CMDLINE_MAX];
-        int backgroundJobs = 0;
-        int pid = 1;
-        int status;
-
+        //int backgroundJobs = 0;
+        //int pid = 1;
+        //int status;
+        Job job;
+        job.background = FALSE;
+        job.backgrounddone = TRUE;
 
         while (1) {
                 
@@ -256,16 +310,18 @@ int main(void){
                 nl = strchr(cmd, '\n');
                 if (nl)
                         *nl = '\0';
-                waitpid(pid, &status, WNOHANG); 
 
                 /* Builtin commands */
                 if (!strcmp(cmd, "exit")) {
-                        if(backgroundJobs){
-                                fprintf(stderr, "Error: active jobs still running\n");
-                                fprintf(stderr, "+ completed '%s' [%d]\n", cmd, 1);
-                                continue;
+                        if(!(job.backgrounddone)){
+                                execute("\0", "\0", &job);
+                                if(job.pid[0]==1){
+                                        break;
+                                }
+                                else{
+                                        continue;
+                                }
                         }
-
                         fprintf(stderr, "Bye...\n");
                         fprintf(stderr, "+ completed '%s' [%d]\n", cmd, 0);
                         break;
@@ -280,16 +336,12 @@ int main(void){
                 else{
                         if(*(nl-1) == '&'){
                                 *(nl-1) = '\0';
-                                backgroundJobs++;
-                                pid = fork();
-                                if(pid == 0){
-                                        
-                                        execute(cmd, copy);
-                                        return EXIT_SUCCESS;
-                                }
-                        }else{
-                        execute(cmd, copy);
+                                job.background = TRUE;
+                                strcpy(job.fullcommand, cmd);
                         }
+                        execute(cmd, copy, &job);
+                        job.background = FALSE;
+                        
                 }
 
                 
