@@ -14,17 +14,26 @@
 
 typedef struct
 {
+        /*
+        This struct is used to process Jobs.
+        It includes many characteristics used in parsing the input, and keeping track of background processes.
+        */
         char *cmds[CMDLINE_MAX];
         int background;
         pid_t pid[4];
         int commandNum;
-        pid_t pidret[4];
+        pid_t pidReturn[4];
         char fullcommand[CMDLINE_MAX];
         int done;
 }Job;
 
 typedef struct
 {
+        /*
+        This struct is used to process each individual command.
+        It includes the command instruction, the arguments which include flags, filenames, etc.
+        Finally it also includes the outputfd, which is the output file descripter for the specific command.
+        */
         char instruction[TOKLEN_MAX];
         char *arguments[ARGS_MAX];
         int outputfd;
@@ -51,6 +60,12 @@ void completedFunction(char *cmd, int *status, int commandNumber)
 
 int pipeParser(char *cmd, Job *job)
 {
+        /*
+        This function takes in the command line input via cmd, and the job object
+        and parses cmd for pipes and adds each token which signifies a command
+        to the array of strings at jobs->cmd[]. It returns the amount of commands in 
+        the command line.
+        */
         char copy[CMDLINE_MAX];
         char *token;
         const char delimiter[2] = "|";
@@ -58,7 +73,11 @@ int pipeParser(char *cmd, Job *job)
 
         strcpy(copy, cmd);
 
-        token = strtok(copy, delimiter);
+        token = strtok(copy, delimiter); 
+        /*
+        Creating a token from the start of the string until the first pipe, and if 
+        no pipes are found then strok() returns NULL.
+        */
         for (i = 0; token != NULL; i++) {
                 (job->cmds)[i] = token;
                 token = strtok(NULL, delimiter);
@@ -69,13 +88,21 @@ int pipeParser(char *cmd, Job *job)
 
 int parser(Command *command, char *cmd, int index, char *copy)
 {
+        /*
+        This function takes in the command object, the command line input, the index that 
+        refers to the current command being parsed, and a copy of the command line input and
+        outputs whether there is a parsing error or not. 
+        */
         char *token;
         char *filename;
         int i;
         const char delimiter[2] = " ";
 
         strcpy(copy, cmd);
-
+        /*
+        Check for the append or output redirection meta characters, and generate the file 
+        descriptors accordingly.
+        */
         char *orindex = strchr(copy, '>');
         char *orindex2 = strrchr(copy, '>');
         if ((orindex && orindex2)&&(orindex2 == orindex+1)) {
@@ -89,12 +116,18 @@ int parser(Command *command, char *cmd, int index, char *copy)
                 command[index].outputfd = open(filename, O_WRONLY | O_CREAT, 0644);
 
         }
-        
+        /*
+        Check that the first character is not a meta character used in output redirection
+        or piping.
+        */
         token = strtok(cmd, delimiter);
         if ((!strcmp(token, ">")) || (!strcmp(token, "<")) || (!strcmp(token, "|"))) {
                 fprintf(stderr, "Error: missing command\n");
                 return 1;
         }
+        /*
+        Parse string for instructions and arguments for errors.
+        */
         strcpy(command[index].instruction, token);
         for (i = 0; token != NULL; i++) {
                 command[index].arguments[i] = token;
@@ -119,13 +152,24 @@ int parser(Command *command, char *cmd, int index, char *copy)
 
 void execute(char *cmd, char *copy, Job *job)
 {
+        /*
+        This function takes in the command line input, copy of the command line input, and
+        job object. It calls on both of the parsers and executes the commands stored in the 
+        Command struct. Calls the completion messages function and monitors background jobs. 
+        It also includes the inbuilt function of cd.
+        */
+        
         int backstatus[PIPE_MAX];
+        /*
+        If exit is called when a background job may be active, check if background job has 
+        been terminated, and release the appropriate completion messages.
+        */
         if (!strcmp("\0", cmd)) {
                 
                 if ((job->pid)[0] != 1) {
                         for (int i = 0; i < job->commandNum; i++) {
-                                (job->pidret)[i] = waitpid((job->pid)[i], &(backstatus[i]), WNOHANG);
-                                if (!(job->pidret)[i]) {
+                                (job->pidReturn)[i] = waitpid((job->pid)[i], &(backstatus[i]), WNOHANG);
+                                if (!(job->pidReturn)[i]) {
                                         fprintf(stderr, "Error: active jobs still running\n");
                                         fprintf(stderr, "+ completed 'exit' [%d]\n", 1);
                                         break;
@@ -142,11 +186,13 @@ void execute(char *cmd, char *copy, Job *job)
                 return;
         } 
         
-        
+        /*
+        Check if previous background jobs have been completed.
+        */
         if ((job->pid)[0] != 1) {
                 for (int i = 0; i < job->commandNum; i++) {
-                       (job->pidret)[i] = waitpid((job->pid)[i], &(backstatus[i]), WNOHANG);
-                       if (!(job->pidret)[i]) {
+                       (job->pidReturn)[i] = waitpid((job->pid)[i], &(backstatus[i]), WNOHANG);
+                       if (!(job->pidReturn)[i]) {
                                 break;
                        }
                        else if (i == (job->commandNum)-1) {
@@ -163,13 +209,17 @@ void execute(char *cmd, char *copy, Job *job)
 
         Command *commands;
         commands = malloc(sizeof(Command) * commandNumber);
-        
+        /*
+        Loop through the commands calling parser on each command.
+        */
         for (int i = 0; i < commandNumber; i++) {
                 commands[i].outputfd = 1;
                 parsingerror = parser(commands, (job->cmds)[i], i, copy);
                 if(parsingerror) return;
         }
-
+        /*
+        CD Implementation and Error Management
+        */
         if (!strcmp(commands[0].instruction, "cd")) {
                 int error_check;
                 if (commands[0].arguments[1] == NULL) {
@@ -188,29 +238,43 @@ void execute(char *cmd, char *copy, Job *job)
                 fprintf(stderr, "+ completed '%s' [%d]\n", cmd, error_check);
                 return;    
         }
-
+        /*
+        Initialize pipes for pipeline commands.
+        */
         int j;
         for (j = 0; j < commandNumber-1; j++) {
                 pipe(fd[j]);
         }
 
-
+        /*
+        Execute commands
+        */
         for (int i = 0; i < commandNumber; i++) { 
                 pid[i] = fork();
                 if (pid[i] == 0) {
+                        /*
+                        Output redirected single command
+                        */
                         if (commandNumber == 1 && commands[i].outputfd != 1) {
                                 dup2(commands[i].outputfd, STDOUT_FILENO);   
-                                
+                        /*
+                        Regular command execution
+                        */
                         } else if (commandNumber == 1) {
                                 execvp(commands[i].instruction, commands[i].arguments); //execvp since it searches the command utilizing $PATH
                                 exit(1);
-                                
+                        /*
+                        First command in pipeline 
+                        */    
                         } else if (i == 0) {
                                 dup2(fd[i][1], STDOUT_FILENO);
                                 for (int j = 0; j < commandNumber-1; j++){
                                         close(fd[j][0]);
                                         close(fd[j][1]);
                                 }
+                        /*
+                        Last command in pipeline.
+                        */
                         } else if (i == commandNumber-1) {
                                 dup2(fd[i-1][0], STDIN_FILENO);
                                 for (int j = 0; j < commandNumber-1; j++) {
@@ -220,6 +284,9 @@ void execute(char *cmd, char *copy, Job *job)
                                 if (commands[i].outputfd != 1) {
                                         dup2(commands[i].outputfd, STDOUT_FILENO);   
                                 }
+                        /*
+                        Middle commands in pipeline.
+                        */
                         } else {
                                 dup2(fd[i-1][0], STDIN_FILENO);
                                 dup2(fd[i][1], STDOUT_FILENO);
@@ -233,28 +300,48 @@ void execute(char *cmd, char *copy, Job *job)
                 } 
         }
 
-       
+        /*
+        Close all pipes.
+        */
         int status[commandNumber];
         for (int i = 0; i < commandNumber-1; i++) {
                 close(fd[i][1]);
                 close(fd[i][0]);
         }
         
+        /*
+        If not background job        
+        */
         if (!(job->background)) {
+                /*
+                Check and wait for pid and status of child.
+                */
                 for (int i = 0; i < commandNumber; i++) {
                         waitpid(0, &(status[i]), 0);
                 }
+                /*
+                Check for cat error.
+                */
                 for (int i = 0; i < commandNumber; i++) {
                         if (WEXITSTATUS(status[i]) == 1 && strcmp(commands[i].instruction, "cat")) {
                                 fprintf(stderr, "Error: command not found\n");
                         }
                 }
+                /*
+                Send out completion message for previous background jobs.
+                */
                 if (job->done && job->pid[0] != 1) {
                         completedFunction(job->fullcommand, backstatus, job->commandNum);
                         job->pid[0] = 1;
 
                 }
+                /*
+                Send out completion messages for regular jobs.
+                */
                 completedFunction(cmd, status, commandNumber);
+        /*
+        Store background jobs information and set background jobs flags.
+        */
         } else if (job->background) {
                 for (int i = 0; i < commandNumber; i++) {
                         (job->pid)[i] = pid[i];
@@ -275,10 +362,10 @@ int main(void)
         job.background = FALSE;
         job.done = TRUE;
 
-        while (1) {
-                
+        while (1) { 
                 
                 char *nl;
+
                 /* Print prompt */
                 printf("sshell@ucd$ ");
                 fflush(stdout);
@@ -299,6 +386,9 @@ int main(void)
 
                 /* Builtin commands */
                 if (!strcmp(cmd, "exit")) {
+                        /*
+                        Check for previous or current background jobs.
+                        */
                         if (!(job.done)) {
                                 execute("\0", "\0", &job);
                                 if(job.pid[0] == 1){
@@ -320,6 +410,9 @@ int main(void)
 
                 /* Regular command */
                 else{
+                        /*
+                        Check for background job character.
+                        */
                         if(*(nl-1) == '&'){
                                 strcpy(job.fullcommand, cmd);
                                 *(nl-1) = '\0';
