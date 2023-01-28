@@ -265,10 +265,8 @@ void execute(char* cmd, char* copy, Job *job){
                 completedFunction(cmd, status, commandNumber);
         }
         else if(job->background){
-                fprintf(stderr,"I am a background job\n");
                 for(int i = 0; i < commandNumber; i++){
                         (job->pid)[i] = pid[i];
-                        fprintf(stderr,"I didnt seg fault stay mad\n");
                 }
                 job->commandNum = commandNumber;
                 
